@@ -23,6 +23,27 @@ var LMBViewer = function( _targetHTMLElement ) {
   var textureCanvas;
   var textureContext;
 
+  /// TODO experimental flag
+  var ONLY_RENDER_WHEN_NECESSARY = true;
+  /// Flag for rendering request due to animations or interaction
+  var RENDER_FLAG = true;
+  var RequestRerender = function() {
+    RENDER_FLAG = true;
+  };
+
+  /// Mouse cursor position
+  /// Used to check if rerendering is necessary
+  var mouse = { x: 0, y: 0 };
+  var mousePositionChanged = true;
+  function onDocumentMouseMove( e ) 
+  {
+    // Update the mouse position
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    mousePositionChanged = true;
+  }
+  document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
   /// GUI interaction variables
   this.GUI__arrows_visible = true;
   this.GUI__floor_grid_visible = true;
@@ -30,6 +51,7 @@ var LMBViewer = function( _targetHTMLElement ) {
   this.GUI__reset_camera = function() {
     scope.resetCamera();
     scope.switchCameraControlScheme(scope.GUI__camera_control_scheme);
+    RequestRerender();
   };
   this.GUI__gl_clear_color = '#ffffff';
   this.GUI__screenshot = function() {
@@ -69,7 +91,8 @@ var LMBViewer = function( _targetHTMLElement ) {
    * GUI method: Change background color
    */
   this.setGlClearColor = function() {
-    renderer.setClearColor( new THREE.Color(scope.GUI__gl_clear_color ), 1.0 );
+    renderer.setClearColor( new THREE.Color(scope.GUI__gl_clear_color), 1.0 );
+    RequestRerender();
   }
 
   /// Window resize event handling
@@ -329,6 +352,7 @@ var LMBViewer = function( _targetHTMLElement ) {
         scene.remove(arrowHelpers[i]);
       }
     }
+    RequestRerender();
   }
 
   /// Floor grid
@@ -349,8 +373,15 @@ var LMBViewer = function( _targetHTMLElement ) {
     } else {
       scene.remove(gridhelper);
     }
+    RequestRerender();
   }
 
+  var UpdateRenderFlag = function() {
+    RENDER_FLAG = RENDER_FLAG || mousePositionChanged;
+  };
+  var ResetMouse = function() {
+    mousePositionChanged = false;
+  }
 
   /**
    * Main render loop
@@ -358,7 +389,12 @@ var LMBViewer = function( _targetHTMLElement ) {
   this.run = function render() { 
     controls.update();
     requestAnimationFrame(render); 
-    renderer.render(scene, camera); 
+    UpdateRenderFlag();
+    if ( RENDER_FLAG || !ONLY_RENDER_WHEN_NECESSARY ) {
+      renderer.render(scene, camera); 
+      RENDER_FLAG = false;
+      ResetMouse();
+    }
   };
 
 }
