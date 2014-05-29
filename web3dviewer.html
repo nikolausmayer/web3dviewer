@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+
+<html> 
+<head> 
+  <meta http-equiv='content-type' content='text/html; charset=UTF-8' />
+  <title> 3DViewer demo </title> 
+  <meta chatset='utf-8'>
+
+  <link type='text/css' rel='stylesheet' href='css/web3dviewer.css'/>
+
+  <!-- Load JQuery because everything needs JQuery -->
+  <script type='text/javascript' src='js/jquery.min.js'></script>
+  <!-- Three.js framework -->
+  <script type='text/javascript' src='js/three.min.js'></script> 
+  <!-- Camera controls -->
+  <script type='text/javascript' src='js/OrbitControls.js'></script> 
+  <script type='text/javascript' src='js/TrackballControls.js'></script> 
+  <!-- GUI controls -->
+  <script type='text/javascript' src='js/DAT.GUI.min.js'></script>
+  <!-- LMBViewer application -->
+  <script type='text/javascript' src='js/ThreeJSViewer.js'></script> 
+  <!-- Screenshot tool -->
+  <script type='text/javascript' src='js/canvas2image.js'></script> 
+  <script type='text/javascript' src='js/base64.js'></script>
+
+  <!-- Initialize the WebGL application -->
+  <script type='text/javascript'>
+    $(document).ready(function() {
+      // Create LMBViewer instance on the target
+      var app = new LMBViewer( $('#LMBViewer') );
+      // Run LMBViewer instance
+      app.run();
+      // Create and insert dat.GUI for LMBViewer
+      LMBViewerGUI(app);
+    });
+  </script>
+</head> 
+<body> 
+
+
+  <!-- Target for the LMBViewer instance to inject its canvas element -->
+  <div id='LMBViewer' style='width: 100%; min-height:100%; height: 100%;'>
+  </div>
+
+</body> 
+</html>
+
