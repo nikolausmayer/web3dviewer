@@ -26,7 +26,8 @@ THREE.TrackballControls = function ( object, domElement ) {
 	this.noPan = false;
 
 	this.staticMoving = false;
-	this.dynamicDampingFactor = 0.2;
+  /// (nikolausmayer) Changed to 1.0 to remove inertia aspect
+	this.dynamicDampingFactor = 1.0;
 
 	this.minDistance = 20;
 	this.maxDistance = 2000;
