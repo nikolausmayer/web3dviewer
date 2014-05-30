@@ -102,6 +102,7 @@ var LMBViewer = function( _targetHTMLElement ) {
     renderer.setSize(WIDTH, HEIGHT);
     camera.aspect = WIDTH/HEIGHT;
     camera.updateProjectionMatrix();
+    RequestRerender();
   });
 
   /// Scene and Camera setup
