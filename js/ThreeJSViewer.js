@@ -47,6 +47,7 @@ var LMBViewer = function( _targetHTMLElement ) {
   /// GUI interaction variables
   this.GUI__arrows_visible = true;
   this.GUI__floor_grid_visible = true;
+  this.GUI__camera_fov_angle = 45.0;
   this.GUI__camera_control_scheme = 'Orbit';
   this.GUI__reset_camera = function() {
     scope.resetCamera();
@@ -114,6 +115,14 @@ var LMBViewer = function( _targetHTMLElement ) {
     camera.position = new THREE.Vector3( 250, 250, 250 );
     camera.lookAt(scene.position);
   };
+  /**
+   * GUI method: Update camera parameters
+   */
+  this.UpdateCamera = function() {
+    camera.fov = scope.GUI__camera_fov_angle;
+    camera.updateProjectionMatrix();
+    RequestRerender();
+  }
   scene = new THREE.Scene(); 
   scope.resetCamera();
   scene.add(camera);
@@ -429,8 +438,11 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
     lmbv.toggleFloorGrid(value);
   });
 
+  ///
   /// Color controls
+  ///
   var folder_colors = gui.addFolder('Colors');
+  /// Background color
   var GUI__gl_clear_color__controller =
       folder_colors.addColor(lmbv, 'GUI__gl_clear_color').name('Background color');
   GUI__gl_clear_color__controller.onChange(function(){
@@ -438,8 +450,18 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
   });
   folder_colors.open();
   
+  ///
   /// Camera controls
+  ///
   var folder_camera = gui.addFolder('Camera');
+  /// Viewing angle
+  var GUI__camera_fov_angle__controller =
+      folder_camera.add(lmbv, 'GUI__camera_fov_angle', 1., 180.
+                       ).name('Viewing angle');
+  GUI__camera_fov_angle__controller.onChange(function() {
+    lmbv.UpdateCamera();
+  });
+  /// Control scheme
   var GUI__camera_control_scheme__controller =
       folder_camera.add(lmbv, 'GUI__camera_control_scheme',
                               ['Orbit', 'Trackball']
@@ -447,6 +469,7 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
   GUI__camera_control_scheme__controller.onFinishChange(function(value) {
     lmbv.switchCameraControlScheme(value);
   });
+  /// 'Reset' button
   var GUI__reset_camera__controller =
       folder_camera.add(lmbv, 'GUI__reset_camera').name('Reset camera');
   folder_camera.open();
