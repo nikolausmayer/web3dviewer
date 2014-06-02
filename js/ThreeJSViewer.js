@@ -27,8 +27,17 @@ var LMBViewer = function( _targetHTMLElement ) {
   var ONLY_RENDER_WHEN_NECESSARY = true;
   /// Flag for rendering request due to animations or interaction
   var RENDER_FLAG = true;
+  /**
+   * Request a render pass.
+   */
   var RequestRerender = function() {
     RENDER_FLAG = true;
+  };
+  /**
+   * Force an immediate rendering. Use sparingly, it's not good style.
+   */
+  var ForceRerender = function() {
+    renderer.render(scene, camera); 
   };
 
   /// Mouse cursor position
@@ -76,6 +85,7 @@ var LMBViewer = function( _targetHTMLElement ) {
   };
   this.GUI__gl_clear_color = '#ffffff';
   this.GUI__screenshot = function() {
+    ForceRerender();
     Canvas2Image.saveAsPNG( $('#LMBViewer__rendererCanvas')[0] );
   };
   ///
