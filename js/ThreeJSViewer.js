@@ -45,12 +45,31 @@ var LMBViewer = function( _targetHTMLElement ) {
   document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 
   /// GUI interaction variables
+  this.GUI;
+  /**
+   * GUI method: Manually update all controllers. This is necessary because
+   * some properties can be changed within the LMBViewer, but using the .listen()
+   * method on the dat.GUI controllers is inefficient (loops constantly).
+   *
+   * Instead, we manually update all the GUI's folders' controllers' displays...
+   */
+  var ManuallyUpdateGUI = function() {
+    if( typeof scope.GUI != 'undefined' ) {
+      for( var f in scope.GUI.__folders ) {
+        for( var i in scope.GUI.__folders[f].__controllers ) {
+          console.log(scope.GUI.__folders[f].__controllers[i]);
+          scope.GUI.__folders[f].__controllers[i].updateDisplay();
+        }
+      }
+    }
+  };
   this.GUI__arrows_visible = true;
   this.GUI__floor_grid_visible = true;
   this.GUI__camera_fov_angle = 45.0;
   this.GUI__camera_control_scheme = 'Orbit';
   this.GUI__reset_camera = function() {
     scope.GUI__camera_fov_angle = 45.0;
+    ManuallyUpdateGUI();
     scope.resetCamera();
     scope.switchCameraControlScheme(scope.GUI__camera_control_scheme);
     RequestRerender();
@@ -458,7 +477,7 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
   /// Viewing angle
   var GUI__camera_fov_angle__controller =
       folder_camera.add(lmbv, 'GUI__camera_fov_angle', 1., 180.
-                       ).name('Viewing angle').listen();
+                       ).name('Viewing angle');
   GUI__camera_fov_angle__controller.onChange(function() {
     lmbv.UpdateCamera();
   });
@@ -477,6 +496,9 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
 
   /// Make and save a screenshot of the current scene view
   gui.add(lmbv, 'GUI__screenshot').name('Save screenshot');
+
+  /// Add ourselves to the LMBViewer
+  lmbv.GUI = gui;
 }
 /// <-- LMBViewerGUI
 
