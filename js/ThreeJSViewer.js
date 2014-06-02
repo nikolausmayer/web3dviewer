@@ -50,6 +50,7 @@ var LMBViewer = function( _targetHTMLElement ) {
   this.GUI__camera_fov_angle = 45.0;
   this.GUI__camera_control_scheme = 'Orbit';
   this.GUI__reset_camera = function() {
+    scope.GUI__camera_fov_angle = 45.0;
     scope.resetCamera();
     scope.switchCameraControlScheme(scope.GUI__camera_control_scheme);
     RequestRerender();
@@ -457,7 +458,7 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
   /// Viewing angle
   var GUI__camera_fov_angle__controller =
       folder_camera.add(lmbv, 'GUI__camera_fov_angle', 1., 180.
-                       ).name('Viewing angle');
+                       ).name('Viewing angle').listen();
   GUI__camera_fov_angle__controller.onChange(function() {
     lmbv.UpdateCamera();
   });
