@@ -141,7 +141,7 @@ var LMBViewer = function( _targetHTMLElement ) {
   var camera;
   this.resetCamera = function() {
     camera = new THREE.PerspectiveCamera( 45, WIDTH / HEIGHT, 
-                                          0.1, 20000 ); 
+                                          10, 3000 ); 
     camera.position = new THREE.Vector3( 250, 250, 250 );
     camera.lookAt(scene.position);
   };
@@ -198,46 +198,69 @@ var LMBViewer = function( _targetHTMLElement ) {
   }
 
   /// Point cloud from depth map and color image
-  /*{
+  /*var test_pointcloud;
+  {
     var width;
     var height;
-    var sampling_spacing=10;
+    var sampling_spacing=5;
     var dimage = new Image();
     var rgbimage = new Image();
+    var imageData, depthData;
+    var geometry = new THREE.Geometry();
+    var depthFilename =  "../img/couch_depthmap.png";
+    var imageFilename =  "../img/couch.jpg";
 
     /// Load depth map image
-    dimage.src = "img/couch_depthmap.png";
-    var geometry = new THREE.Geometry();
+    dimage.src = depthFilename;
     $(dimage).load(function(){
       width = dimage.width;
       height = dimage.height;
+      /// Once the image is loaded, it has to be drawn within an OpenGL 
+      /// context so we can read out the pixel data. This does not mean
+      /// that the image is *displayed*; the canvas object belonging to
+      /// this context is not a member of the HTML page.
       textureContext.drawImage(dimage,0,0);
-      var imageData = textureContext.getImageData(0,0,width,height).data;
-      //var centerOfMass = new THREE.Vector3(0,0,0);
-      //var vertexCount = 0;
+      depthData = textureContext.getImageData(0,0,width,height).data;
+      var centerOfMass = new THREE.Vector3(0,0,0);
+      var vertexCount = 0;
       /// Load depths
-      for ( y=0; y<height; y+=sampling_spacing ) {
-        for ( x=0; x<width; x+=sampling_spacing ) {
-          var depth = imageData[((y*width)+x)*4]/100.;
-          /// TODO Invalid depths are 0 => there are particles at the origin
+      for ( var y=0; y<height; y+=sampling_spacing ) {
+        for ( var x=0; x<width; x+=sampling_spacing ) {
+          /// Pixel layout: DDDADDDADDDA where D==depth; A(lpha) is unused;
+          /// This is just a side effect of using the PNG format naively...
+          var depth = depthData[((y*width)+x)*4];
+          /// Depth 0 is 'invalid'
+          if ( depth == 0. ) continue;
+
           var vertex = scope.DepthPointToVector3(x, y, depth);
           geometry.vertices.push( vertex );
-          //centerOfMass.add(vertex);
-          //vertexCount += 1;
+
+          centerOfMass.add( vertex );
+          vertexCount += 1;
         }
       }
-      //centerOfMass.divideScalar(vertexCount);
+      /// Center point cloud at the origin
+      centerOfMass.divideScalar(vertexCount);
+      for ( var i=0; i < geometry.vertices.length; i++ ) {
+        geometry.vertices[i].sub( centerOfMass );;
+      }
+      /// Start loading color image
+      rgbimage.src = imageFilename;
     });
     /// Load color image
-    rgbimage.src = "img/couch.jpg";
     $(rgbimage).load(function(){
       width = rgbimage.width;
       height = rgbimage.height;
       textureContext.drawImage(rgbimage,0,0);
-      var imageData = textureContext.getImageData(0,0,width,height).data;
+      imageData = textureContext.getImageData(0,0,width,height).data;
       /// Load colors
-      for ( y=0; y<height; y+=sampling_spacing ) {
-        for ( x=0; x<width; x+=sampling_spacing ) {
+      for ( var y=0; y<height; y+=sampling_spacing ) {
+        for ( var x=0; x<width; x+=sampling_spacing ) {
+          /// Skip pixels for which there was no valid depth (see above)
+          var depth = depthData[((y*width)+x)*4];
+          if ( depth == 0. ) continue;
+
+          /// Pixel layout: RGBARGBARGBA... (A(lpha) is unused)
           var r = imageData[((y*width)+x)*4];
           var g = imageData[((y*width)+x)*4+1];
           var b = imageData[((y*width)+x)*4+2];
@@ -245,11 +268,13 @@ var LMBViewer = function( _targetHTMLElement ) {
           geometry.colors.push( color );
         }
       }
-      var material_params = {vertexColors: THREE.VertexColors,
-        size: 0.1};
+      var material_params = { vertexColors: THREE.VertexColors,
+                              size: 2 };
       var material = new THREE.ParticleSystemMaterial(material_params);
-      var particles = new THREE.ParticleSystem(geometry, material);
-      scene.add(particles);
+      test_pointcloud = new THREE.ParticleSystem(geometry, material);
+      scene.add( test_pointcloud );
+      /// Make sure the newly added object is displayed immediately
+      RequestRerender();
     });
   }*/
 
@@ -287,7 +312,9 @@ var LMBViewer = function( _targetHTMLElement ) {
     /**
      * Camera:
      *
-     *  p3------------p2  __ Viewing direction
+     *        pt1
+     *       /   \
+     *  p3--pt2--pt0--p2  __ Viewing direction
      *   | \        / |    /|
      *   |  \     /   |   /
      *   |   \  /     |  /
@@ -298,35 +325,52 @@ var LMBViewer = function( _targetHTMLElement ) {
     var fy = scope.camera_intrinsics['fy'];
     var cx = scope.camera_intrinsics['cx'];
     var cy = scope.camera_intrinsics['cy'];
-    var w = 1268;
-    var h = 845;
+    var w = 2*scope.camera_intrinsics['cx'];
+    var h = 2*scope.camera_intrinsics['cy'];
     var scaling = 20;
-    var p1 = new THREE.Vector3(-cx/fx,      -cy/fy, 1);
-    var p2 = new THREE.Vector3(-cx/fx, (h-1-cy)/fy, 1);
-    var p3 = new THREE.Vector3((w-1-cx)/fx, (h-1-cy)/fy, 1);
-    var p4 = new THREE.Vector3((w-1-cx)/fx,      -cy/fy, 1);
-    var p5 = new THREE.Vector3(0,0,0);
+    var p1  = new THREE.Vector3(-cx/fx,      -cy/fy, 1);
+    var p2  = new THREE.Vector3(-cx/fx, (h-1-cy)/fy, 1);
+    var p3  = new THREE.Vector3((w-1-cx)/fx, (h-1-cy)/fy, 1);
+    var p4  = new THREE.Vector3((w-1-cx)/fx,      -cy/fy, 1);
+    var p5  = new THREE.Vector3(0,0,0);
+    var pt0 = new THREE.Vector3(-cx/fx*0.3,(h-1-cy)/fy,1);
+    var pt1 = new THREE.Vector3(0,(h-1-cy)/fy*1.2,1);
+    var pt2 = new THREE.Vector3((w-1-cx)/fx*0.3,(h-1-cy)/fy,1);
     p1.multiplyScalar(scaling);
     p2.multiplyScalar(scaling);
     p3.multiplyScalar(scaling);
     p4.multiplyScalar(scaling);
+    pt0.multiplyScalar(scaling);
+    pt1.multiplyScalar(scaling);
+    pt2.multiplyScalar(scaling);
     var camera_geometry = new THREE.Geometry();
-    camera_geometry.vertices.push(p1); 
-    camera_geometry.vertices.push(p2);
-    camera_geometry.vertices.push(p3);
-    camera_geometry.vertices.push(p4);
-    camera_geometry.vertices.push(p1);
-    camera_geometry.vertices.push(p5);
-    camera_geometry.vertices.push(p3);
-    camera_geometry.vertices.push(p4);
-    camera_geometry.vertices.push(p5);
-    camera_geometry.vertices.push(p2);
+    camera_geometry.vertices.push(p1);  // \
+    camera_geometry.vertices.push(p2);  //  |
+    camera_geometry.vertices.push(p3);  //  | rectangular frame
+    camera_geometry.vertices.push(p4);  //  |
+    camera_geometry.vertices.push(p1);  // /
+    camera_geometry.vertices.push(p5);  // \
+    camera_geometry.vertices.push(p3);  //  |
+    camera_geometry.vertices.push(p4);  //  | pyramid to optical center
+    camera_geometry.vertices.push(p5);  //  |
+    camera_geometry.vertices.push(p2);  // /
+    camera_geometry.vertices.push(pt0); // \
+    camera_geometry.vertices.push(pt1); //  | 'top' indicator triangle
+    camera_geometry.vertices.push(pt2); // /
     var line_material_parameters = { color: 0x000000,
                                      linewidth: 2,
                                    };
     var line_material = new THREE.LineBasicMaterial( line_material_parameters );
     camera_pose = new THREE.Line( camera_geometry, line_material );
     scene.add( camera_pose );
+
+    /// bogus test transform (distorts object)
+    var m = new THREE.Matrix4( 1, -1, -.5, 10, 
+                               1, 1, -.25, 20,
+                               .5, .25, 1, 30,
+                               0, 0, 0, 1
+                             );
+    camera_pose.applyMatrix(m);
   }
   ///
 
