@@ -197,9 +197,21 @@ var LMBViewer = function( _targetHTMLElement ) {
     }
   }
 
-  /// Point cloud from depth map and color image
-  /*var test_pointcloud;
+
+  /**
+   * Load two image files (depth map + RGB image) and display the
+   * resulting point cloud.
+   *
+   * @param depthImageFilename Path to the depth map image file
+   * @param colorImageFilename Path to the rgb image file
+   * @param name Name of the created point cloud, used to identify the object
+   */
+  this.DisplayPointCloud = function( depthImageFilename,
+                                     colorImageFilename,
+                                     name
+                                   ) 
   {
+    var pointcloud_object;
     var width;
     var height;
     var sampling_spacing=5;
@@ -207,8 +219,8 @@ var LMBViewer = function( _targetHTMLElement ) {
     var rgbimage = new Image();
     var imageData, depthData;
     var geometry = new THREE.Geometry();
-    var depthFilename =  "../img/couch_depthmap.png";
-    var imageFilename =  "../img/couch.jpg";
+    var depthFilename =  depthImageFilename; //"../img/couch_depthmap.png";
+    var imageFilename =  colorImageFilename; //"../img/couch.jpg";
 
     /// Load depth map image
     dimage.src = depthFilename;
@@ -271,12 +283,14 @@ var LMBViewer = function( _targetHTMLElement ) {
       var material_params = { vertexColors: THREE.VertexColors,
                               size: 2 };
       var material = new THREE.ParticleSystemMaterial(material_params);
-      test_pointcloud = new THREE.ParticleSystem(geometry, material);
-      scene.add( test_pointcloud );
+      pointcloud_object = new THREE.ParticleSystem(geometry, material);
+      /// Name the object so it can be identified and retrieved later
+      pointcloud_object.name = name;
+      scene.add( pointcloud_object );
       /// Make sure the newly added object is displayed immediately
       RequestRerender();
     });
-  }*/
+  };
 
   /// TESTING Mesh
   {
@@ -481,7 +495,7 @@ var LMBViewer = function( _targetHTMLElement ) {
     }
   };
 
-}
+};
 /// <-- LMBViewer application
 
 
@@ -553,8 +567,11 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
 
   /// Add ourselves to the LMBViewer
   lmbv.GUI = gui;
-}
+};
 /// <-- LMBViewerGUI
+
+
+
 
 
 
@@ -562,6 +579,8 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
  * Helper function for displaying text sprites that always face the camera
  *
  * Original from: https://stemkoski.github.io/Three.js
+ *
+ * TODO Option for sprites that do not change their pixel size with distance
  *
  * @param message Text for the sprite
  * @param parameters Sprite parameters
