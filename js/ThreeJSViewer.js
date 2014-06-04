@@ -165,6 +165,8 @@ var LMBViewer = function( _targetHTMLElement ) {
     camera.updateProjectionMatrix();
     RequestRerender();
   }
+  /// Flag indicating whether the camera has changed (this needing rerendering)
+  var cameraChanged = true;
 
   /// Intrinsic camera parameters
   this.camera_intrinsics = { fx:     525.,     // Focal length x
@@ -562,17 +564,19 @@ var LMBViewer = function( _targetHTMLElement ) {
   }
 
   var UpdateRenderFlag = function() {
-    RENDER_FLAG = RENDER_FLAG || mousePositionChanged;
+    //RENDER_FLAG = RENDER_FLAG || mousePositionChanged;
+    RENDER_FLAG = RENDER_FLAG || cameraChanged;
   };
   var ResetMouse = function() {
     mousePositionChanged = false;
+    cameraChanged = false;
   }
 
   /**
    * Main render loop
    */
   this.run = function render() { 
-    controls.update();
+    cameraChanged = controls.update();
     requestAnimationFrame(render); 
     UpdateRenderFlag();
     if ( RENDER_FLAG || !ONLY_RENDER_WHEN_NECESSARY ) {

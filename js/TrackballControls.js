@@ -278,7 +278,11 @@ THREE.TrackballControls = function ( object, domElement ) {
 
 			lastPosition.copy( _this.object.position );
 
+      return true;
+
 		}
+
+    return false;
 
 	};
 

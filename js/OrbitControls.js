@@ -199,7 +199,11 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 			lastPosition.copy( this.object.position );
 
+      return true;
+
 		}
+
+    return false;
 
 	};
 
