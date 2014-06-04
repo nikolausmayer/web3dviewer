@@ -11,6 +11,14 @@
  */
 
 /**
+ * Helper for default function arguments
+ */
+var Default = function( paramsDict, key, defaultValue ) {
+  if ( !(key in paramsDict) || typeof(paramsDict[key]) === 'undefined' )
+    paramsDict[key] = defaultValue;
+};
+
+/**
  * The LMBViewer application
  *
  * @param canvasElement The HTML <canvas> element in which the instance runs.
@@ -64,9 +72,11 @@ var LMBViewer = function( _targetHTMLElement ) {
    */
   var ManuallyUpdateGUI = function() {
     if( typeof scope.GUI != 'undefined' ) {
+      /// For all GUI 'folders'...
       for( var f in scope.GUI.__folders ) {
+        /// ..., for all controllers in this folder...
         for( var i in scope.GUI.__folders[f].__controllers ) {
-          console.log(scope.GUI.__folders[f].__controllers[i]);
+          /// ..., update this controller.
           scope.GUI.__folders[f].__controllers[i].updateDisplay();
         }
       }
@@ -137,7 +147,7 @@ var LMBViewer = function( _targetHTMLElement ) {
   });
 
   /// Scene and Camera setup
-  var scene;
+  var scene = new THREE.Scene();
   var camera;
   this.resetCamera = function() {
     camera = new THREE.PerspectiveCamera( 45, WIDTH / HEIGHT, 
@@ -145,6 +155,8 @@ var LMBViewer = function( _targetHTMLElement ) {
     camera.position = new THREE.Vector3( 250, 250, 250 );
     camera.lookAt(scene.position);
   };
+  scene.add(camera);
+  scope.resetCamera();
   /**
    * GUI method: Update camera parameters
    */
@@ -153,30 +165,51 @@ var LMBViewer = function( _targetHTMLElement ) {
     camera.updateProjectionMatrix();
     RequestRerender();
   }
-  scene = new THREE.Scene(); 
-  scope.resetCamera();
-  scene.add(camera);
-  //camera.lookAt(scene.position);
 
   /// Intrinsic camera parameters
-  this.camera_intrinsics = { fx: 800.,  // Focal length x
-                             fy: 800.,  // Focal length y
-                             fx_inv: 1./800.,  // Inverse focal length x
-                             fy_inv: 1./800.,  // Inverse focal length y 
-                             cx: 634.,  // Center point x
-                             cy: 427.,  // Center point y
+  this.camera_intrinsics = { fx:     525.,     // Focal length x
+                             fy:     525.,     // Focal length y
+                             fx_inv: 1./525.,  // Inverse focal length x
+                             fy_inv: 1./525.,  // Inverse focal length y 
+                             cx:     319.5,    // Center point x
+                             cy:     239.5,    // Center point y
+                             width:  640.,     // Image width
+                             height: 480.,     // Image height
                            };
+  /**
+   * Set intrinsic camera parameters
+   *
+   * @param params Dictionary with values for fx, fy, cx, cy, width, height
+   */
+  this.SetCameraIntrinsics = function( params ) {
+    Default(params, 'fx', 525.);
+    Default(params, 'fy', 525.);
+    Default(params, 'cx', 319.5);
+    Default(params, 'cy', 239.5);
+    Default(params, 'width', 640.);
+    Default(params, 'height', 480.);
+    scope.camera_intrinsics.fx     = params.fx;
+    scope.camera_intrinsics.fy     = params.fy;
+    scope.camera_intrinsics.fx_inv = 1./params.fx;
+    scope.camera_intrinsics.fy_inv = 1./params.fy;
+    scope.camera_intrinsics.cx     = params.cx;
+    scope.camera_intrinsics.cy     = params.cy;
+    scope.camera_intrinsics.width  = params.width;
+    scope.camera_intrinsics.height = params.height;
+  };
+  
+
 
   /**
    * Create a 3D point from pixel coordinates + depth
    */
   this.DepthPointToVector3 = function(x, y, depth) {
     var r = new THREE.Vector3();
-    r.x = (x-scope.camera_intrinsics['cx']) * 
-          (scope.camera_intrinsics['fx_inv']) * 
+    r.x = (x-scope.camera_intrinsics.cx) * 
+          (scope.camera_intrinsics.fx_inv) * 
           depth;
-    r.y = -(y-scope.camera_intrinsics['cy']) * 
-           (scope.camera_intrinsics['fy_inv']) * 
+    r.y = -(y-scope.camera_intrinsics.cy) * 
+           (scope.camera_intrinsics.fy_inv) * 
            depth;
     r.z = -depth;
     return r;
@@ -202,25 +235,38 @@ var LMBViewer = function( _targetHTMLElement ) {
    * Load two image files (depth map + RGB image) and display the
    * resulting point cloud.
    *
-   * @param depthImageFilename Path to the depth map image file
-   * @param colorImageFilename Path to the rgb image file
-   * @param name Name of the created point cloud, used to identify the object
+   * @param params Dictionary of parameters; possible keys are:
+   *    depthImage: Path of the depth map image to load
+   *    colorImage: Path of the color image to load
+   *    objectName: Name given to the created point cloud object
+   *    sampling_spacing: Every i-th pixel in x/y-direction will be used
    */
-  this.DisplayPointCloud = function( depthImageFilename,
-                                     colorImageFilename,
-                                     name
-                                   ) 
+  this.DisplayPointCloud = function( params ) 
   {
-    var pointcloud_object;
-    var width;
-    var height;
-    var sampling_spacing=5;
+    /// Check for unset parameters
+    if ( typeof(params) === 'undefined' ) params = {};
+    Default(params, 'depthImage', './examples/depth_0000_converted.png');
+    Default(params, 'colorImage', './examples/color_0000.png');
+    Default(params, 'objectName', 'DEFAULT_POINT_CLOUD_NAME');
+    Default(params, 'sampling_spacing', 5);
+    Default(params, 'depthDataIsKinect', false);
+    Default(params, 'pointSize', 2);
+    Default(params, 'callback', function(){});
+    var depthFilename = params.depthImage;
+    var imageFilename = params.colorImage;
+    var name = params.objectName;
+    var sampling_spacing = params.sampling_spacing;
+    var KINECT = params.depthDataIsKinect;
+    var pointSize = params.pointSize;
+    var callback = params.callback;
+
     var dimage = new Image();
     var rgbimage = new Image();
     var imageData, depthData;
     var geometry = new THREE.Geometry();
-    var depthFilename =  depthImageFilename; //"../img/couch_depthmap.png";
-    var imageFilename =  colorImageFilename; //"../img/couch.jpg";
+    var pointcloud_object;
+    var width;
+    var height;
 
     /// Load depth map image
     dimage.src = depthFilename;
@@ -229,7 +275,7 @@ var LMBViewer = function( _targetHTMLElement ) {
       height = dimage.height;
       /// Once the image is loaded, it has to be drawn within an OpenGL 
       /// context so we can read out the pixel data. This does not mean
-      /// that the image is *displayed*; the canvas object belonging to
+      /// that the image is *displayed*: The canvas object belonging to
       /// this context is not a member of the HTML page.
       textureContext.drawImage(dimage,0,0);
       depthData = textureContext.getImageData(0,0,width,height).data;
@@ -238,9 +284,15 @@ var LMBViewer = function( _targetHTMLElement ) {
       /// Load depths
       for ( var y=0; y<height; y+=sampling_spacing ) {
         for ( var x=0; x<width; x+=sampling_spacing ) {
-          /// Pixel layout: DDDADDDADDDA where D==depth; A(lpha) is unused;
-          /// This is just a side effect of using the PNG format naively...
-          var depth = depthData[((y*width)+x)*4];
+
+          /// Get depth value
+          var depth;
+          if ( KINECT ) {
+            depth = depthData[((y*width)+x)*4+1]*256 + depthData[((y*width)+x)*4];
+            depth = depth/10.0;
+          } else {
+            depth = depthData[((y*width)+x)*4];
+          }
           /// Depth 0 is 'invalid'
           if ( depth == 0. ) continue;
 
@@ -268,8 +320,15 @@ var LMBViewer = function( _targetHTMLElement ) {
       /// Load colors
       for ( var y=0; y<height; y+=sampling_spacing ) {
         for ( var x=0; x<width; x+=sampling_spacing ) {
+
+          var depth;
+          if ( KINECT ) {
+            depth = depthData[((y*width)+x)*4+1]*256 + depthData[((y*width)+x)*4];
+            depth = depth/10.0;
+          } else {
+            depth = depthData[((y*width)+x)*4];
+          }
           /// Skip pixels for which there was no valid depth (see above)
-          var depth = depthData[((y*width)+x)*4];
           if ( depth == 0. ) continue;
 
           /// Pixel layout: RGBARGBARGBA... (A(lpha) is unused)
@@ -281,19 +340,23 @@ var LMBViewer = function( _targetHTMLElement ) {
         }
       }
       var material_params = { vertexColors: THREE.VertexColors,
-                              size: 2 };
+                              size: pointSize };
       var material = new THREE.ParticleSystemMaterial(material_params);
       pointcloud_object = new THREE.ParticleSystem(geometry, material);
       /// Name the object so it can be identified and retrieved later
       pointcloud_object.name = name;
       scene.add( pointcloud_object );
+      /// Execute the callback (if specified)
+      callback();
       /// Make sure the newly added object is displayed immediately
       RequestRerender();
     });
   };
 
-  /// TESTING Mesh
-  {
+  /**
+   * Generate and display a colored test mesh triangle
+   */
+  this.DisplayTestTriangle = function() {
     var test_mesh_geometry = new THREE.Geometry();
     /// Vertices of the triangle
     var v1 = new THREE.Vector3(0,0,0);
@@ -317,11 +380,10 @@ var LMBViewer = function( _targetHTMLElement ) {
     /// Setup object using geometry and material
     var object = new THREE.Mesh( test_mesh_geometry, test_mesh_material );
     scene.add( object );
-  }
-  ///
+  };
 
-  /// TESTING Visualize camera pose
-  var camera_pose;
+  /// Camera pose object
+  var camera_pose_prototype;
   {
     /**
      * Camera:
@@ -335,12 +397,12 @@ var LMBViewer = function( _targetHTMLElement ) {
      *   |  _.p5.___  |
      *  p4=---------==p1
      */
-    var fx = scope.camera_intrinsics['fx'];
-    var fy = scope.camera_intrinsics['fy'];
-    var cx = scope.camera_intrinsics['cx'];
-    var cy = scope.camera_intrinsics['cy'];
-    var w = 2*scope.camera_intrinsics['cx'];
-    var h = 2*scope.camera_intrinsics['cy'];
+    var fx = scope.camera_intrinsics.fx;
+    var fy = scope.camera_intrinsics.fy;
+    var cx = scope.camera_intrinsics.cx;
+    var cy = scope.camera_intrinsics.cy;
+    var w = 2*scope.camera_intrinsics.cx;
+    var h = 2*scope.camera_intrinsics.cy;
     var scaling = 20;
     var p1  = new THREE.Vector3(-cx/fx,      -cy/fy, 1);
     var p2  = new THREE.Vector3(-cx/fx, (h-1-cy)/fy, 1);
@@ -375,18 +437,43 @@ var LMBViewer = function( _targetHTMLElement ) {
                                      linewidth: 2,
                                    };
     var line_material = new THREE.LineBasicMaterial( line_material_parameters );
-    camera_pose = new THREE.Line( camera_geometry, line_material );
-    scene.add( camera_pose );
+    camera_pose_prototype = { geometry: camera_geometry,
+                              material: line_material };
+    //camera_pose = new THREE.Line( camera_geometry, line_material );
+    //scene.add( camera_pose );
 
     /// bogus test transform (distorts object)
-    var m = new THREE.Matrix4( 1, -1, -.5, 10, 
+    /*var m = new THREE.Matrix4( 1, -1, -.5, 10, 
                                1, 1, -.25, 20,
                                .5, .25, 1, 30,
                                0, 0, 0, 1
                              );
-    camera_pose.applyMatrix(m);
+    camera_pose.applyMatrix(m);*/
   }
   ///
+  
+  /**
+   * Visualize a camera pose
+   *
+   * @param params Dictionary of transformation parameters:
+   *    rotation: Matrix4; only the rotational part is used
+   *    translation: Vector3; the absolute camera position in world space
+   *    name: Name identifier given to the camera pose object
+   */
+  this.DisplayCameraPose = function( params ) {
+    Default(params, 'rotation',    new THREE.Matrix4());
+    Default(params, 'translation', new THREE.Vector3());
+    Default(params, 'name', 'DEFAULT_CAMERA_NAME');
+    var R = params.rotation;
+    var t = params.translation;
+    var transform = R.clone();
+    transform.setPosition(t);
+    var cam = new THREE.Line( camera_pose_prototype.geometry,
+                              camera_pose_prototype.material );
+    cam.applyMatrix(transform);
+    cam.name = params.name;
+    scene.add(cam);
+  };
 
   /// Unit direction arrows and dimension labels
   var arrowHelpers = [];
@@ -493,6 +580,17 @@ var LMBViewer = function( _targetHTMLElement ) {
       RENDER_FLAG = false;
       ResetMouse();
     }
+  };
+
+  /**
+   * Get a named scene object by its .name attribute. This method
+   * only retrieves and forwards the getObjectByName method of the
+   * scene object itself.
+   *
+   * @param name Name of the object to retrieve
+   */
+  this.getObjectByName = function( name ) {
+    return scene.getObjectByName( name );
   };
 
 };
