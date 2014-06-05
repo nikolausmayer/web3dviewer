@@ -34,6 +34,9 @@
       LMBViewerGUI(lmbv);
 
       // Set up intrinsic camera parameters
+      /*lmbv.SetCameraIntrinsics( { fx: 2000.0, fy: 2000.0,
+                                  cx: 670, cy: 446.5,
+                                  width: 1340.0, height: 893.0 } );*/
       lmbv.SetCameraIntrinsics( { fx: 525.0, fy: 525.0,
                                   cx: 319.5, cy: 239.5,
                                   width: 640.0, height: 480.0 } );
@@ -41,22 +44,24 @@
       /// USAGE EXAMPLE:
 
       // Example: Display test triangle
-      lmbv.DisplayTestTriangle();
+      //lmbv.DisplayTestTriangle();
 
       // Example: Callback to rotate the point cloud after its creation
       var testCb = function() {
         var test_matrix = new THREE.Matrix4();
         test_matrix.makeRotationFromEuler( new THREE.Euler(-0.4, 0, 0, 'XYZ') );
-        var PCL_object = lmbv.getObjectByName('Kinect_viking_ship');
+        var PCL_object = lmbv.getObjectByName('testName');
         PCL_object.applyMatrix(test_matrix);
       };
       // Example: Load RGB+D data and display as point cloud
-      lmbv.DisplayPointCloud( { depthImage: './examples/depth_0000_converted.png',
+      lmbv.DisplayPointCloud( { //depthImage: './examples/couch_depth_0025_converted.png',
+                                //colorImage: './examples/couch_image_0025_resized.png',
+                                depthImage: './examples/depth_0000_converted.png',
                                 colorImage: './examples/color_0000.png',
-                                objectName: 'Kinect_viking_ship',
-                                sampling_spacing: 5,
-                                depthDataIsKinect: true,
-                                pointSize: 3,
+                                objectName: 'testName',
+                                sampling_spacing: 1,
+                                depthDataFormat: 'UInt16',
+                                pointSize: 1,
                                 callback: testCb} );
       // Example: Display camera pose
       // ... turned 180° around the Y axis ...

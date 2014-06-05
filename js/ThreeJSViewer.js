@@ -6,8 +6,15 @@
  * 
  * ThreeJS application for displaying 3D geometry.
  *
- * ===================== USAGE =====================
- * 1. Create <canvas> element within your HTML page. The size has to be at
+ * =============================== USAGE ===============================
+ * 1. Create a target element within your HTML page, with a specific <ID>.
+ * 2. Setup an LMBViewer instance within that element,
+ *      var lmbv = new LMBViewer( $('#<ID>') );
+ *    and start it:
+ *      lmbv.run();
+ * 3. Optionally, add GUI elements to the viewer's window:
+ *      LMBViewerGUI(lmbv);
+ * For further steps, see the provided example HTML page.
  */
 
 /**
@@ -31,7 +38,7 @@ var LMBViewer = function( _targetHTMLElement ) {
   var textureCanvas;
   var textureContext;
 
-  /// TODO experimental flag
+  /// Flag used to prevent rerendering when nothing has changed
   var ONLY_RENDER_WHEN_NECESSARY = true;
   /// Flag for rendering request due to animations or interaction
   var RENDER_FLAG = true;
@@ -251,14 +258,14 @@ var LMBViewer = function( _targetHTMLElement ) {
     Default(params, 'colorImage', './examples/color_0000.png');
     Default(params, 'objectName', 'DEFAULT_POINT_CLOUD_NAME');
     Default(params, 'sampling_spacing', 5);
-    Default(params, 'depthDataIsKinect', false);
+    Default(params, 'depthDataFormat', 'UInt16');
     Default(params, 'pointSize', 2);
     Default(params, 'callback', function(){});
     var depthFilename = params.depthImage;
     var imageFilename = params.colorImage;
     var name = params.objectName;
     var sampling_spacing = params.sampling_spacing;
-    var KINECT = params.depthDataIsKinect;
+    var depthDataFormat = params.depthDataFormat;
     var pointSize = params.pointSize;
     var callback = params.callback;
 
@@ -289,9 +296,10 @@ var LMBViewer = function( _targetHTMLElement ) {
 
           /// Get depth value
           var depth;
-          if ( KINECT ) {
-            depth = depthData[((y*width)+x)*4+1]*256 + depthData[((y*width)+x)*4];
-            depth = depth/10.0;
+          if ( depthDataFormat == 'UInt16' ) {
+            depth = depthData[((y*width)+x)*4+1]*256 + 
+                    depthData[((y*width)+x)*4];
+            depth = depth/10.;
           } else {
             depth = depthData[((y*width)+x)*4];
           }
@@ -308,7 +316,7 @@ var LMBViewer = function( _targetHTMLElement ) {
       /// Center point cloud at the origin
       centerOfMass.divideScalar(vertexCount);
       for ( var i=0; i < geometry.vertices.length; i++ ) {
-        geometry.vertices[i].sub( centerOfMass );;
+        geometry.vertices[i].sub( centerOfMass );
       }
       /// Start loading color image
       rgbimage.src = imageFilename;
@@ -324,9 +332,10 @@ var LMBViewer = function( _targetHTMLElement ) {
         for ( var x=0; x<width; x+=sampling_spacing ) {
 
           var depth;
-          if ( KINECT ) {
-            depth = depthData[((y*width)+x)*4+1]*256 + depthData[((y*width)+x)*4];
-            depth = depth/10.0;
+          if ( depthDataFormat == 'UInt16' ) {
+            depth = depthData[((y*width)+x)*4+1]*256 + 
+                    depthData[((y*width)+x)*4];
+            depth = depth/10.;
           } else {
             depth = depthData[((y*width)+x)*4];
           }
