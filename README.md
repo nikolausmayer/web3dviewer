@@ -5,6 +5,7 @@ web3dviewer
 
 Any libraries provided within this codebase are under MIT or Apache 2.0 license.
 
+![Displaying a camera pose and textured point cloud](img/screenshot.png "Displaying a camera pose and textured point cloud")
 
 Installation
 ------------
