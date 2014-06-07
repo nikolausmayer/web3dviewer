@@ -63,6 +63,52 @@ var LMBViewer = function( _targetHTMLElement ) {
 
   /// GUI interaction variables
   this.GUI;
+
+  /// TESTING
+  this.SceneObjects = {};
+  this.GUIObjectsVisibilities = {};
+  /**
+   * Add new objects to GUI
+   */
+  this.AddObject = function( object ) {
+    console.log("LMBViewer.AddObjectToGUI", object.name );
+    scope.SceneObjects[object.name] = object;
+    scope.GUIObjectsVisibilities[object.name] = true;
+    scope.GUI.AddObjectToSceneObjectsFolder( object.name );
+    };
+  this.GUI__UpdateObject = function( objectName, visibility ) {
+    sceneObject = scope.SceneObjects[objectName];
+    if ( typeof(sceneObject) === 'undefined' ) {
+      console.log("LMBViewer.GUI__UpdateObject", "ERROR", objectName);
+    } else {
+      if ( visibility ) {
+        scene.add(scope.SceneObjects[objectName]);
+      } else { 
+        scene.remove(scope.SceneObjects[objectName]);
+      }
+    }
+      var testCb = function() {
+        var test_matrix = new THREE.Matrix4();
+        test_matrix.makeRotationFromEuler( new THREE.Euler(-0.4, 0, 0, 'XYZ') );
+        var PCL_object = lmbv.getObjectByName('Kinect_viking_ship');
+        PCL_object.applyMatrix(test_matrix);
+      };
+      var testCb = function() {
+        var test_matrix = new THREE.Matrix4();
+        test_matrix.makeRotationFromEuler( new THREE.Euler(-0.4, 0, 0, 'XYZ') );
+        var PCL_object = lmbv.getObjectByName('Kinect_viking_ship');
+        PCL_object.applyMatrix(test_matrix);
+      };
+      var testCb = function() {
+        var test_matrix = new THREE.Matrix4();
+        test_matrix.makeRotationFromEuler( new THREE.Euler(-0.4, 0, 0, 'XYZ') );
+        var PCL_object = lmbv.getObjectByName('Kinect_viking_ship');
+        PCL_object.applyMatrix(test_matrix);
+      };
+    RequestRerender();
+  };
+  /// TESTING
+
   /**
    * GUI method: Manually update all controllers. This is necessary because
    * some properties can be changed within the LMBViewer, but using the .listen()
@@ -348,6 +394,7 @@ var LMBViewer = function( _targetHTMLElement ) {
       /// Name the object so it can be identified and retrieved later
       pointcloud_object.name = name;
       scene.add( pointcloud_object );
+      scope.AddObject( pointcloud_object );
       /// Execute the callback (if specified)
       callback();
       /// Make sure the newly added object is displayed immediately
@@ -597,6 +644,34 @@ var LMBViewer = function( _targetHTMLElement ) {
     return scene.getObjectByName( name );
   };
 
+
+  /// TESTING Planar textured objects
+  {
+    console.log("TESTING PLANAR TEXTURED OBJECT");
+    geo = new THREE.PlaneGeometry(320,240);
+    console.log(geo);
+    console.log(geo.vertices);
+    par = { map: THREE.ImageUtils.loadTexture('./examples/color_0000.png') };
+    console.log(par);
+    mat = new THREE.MeshBasicMaterial( par );
+    mat.map.needsUpdate = true;
+    mat.overdraw = true;
+    console.log(mat);
+    obj = new THREE.Mesh( geo, mat);
+    obj.material.side = THREE.DoubleSide;
+    obj.rotation.x = Math.PI*0.5;
+    scene.add( obj );
+
+    var obj2 = obj.clone();
+    obj2.position.x = 100;
+    obj2.position.z = -200;
+    obj2.rotation.z = Math.PI*0.25
+    /// Set obj2 on a slightly different height to avoid Z buffer confusion
+    obj2.position.y = -0.1;
+    scene.add( obj2 );
+  }
+  /// TESTING
+
 };
 /// <-- LMBViewer application
 
@@ -666,6 +741,22 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
 
   /// Make and save a screenshot of the current scene view
   gui.add(lmbv, 'GUI__screenshot').name('Save screenshot');
+  
+  /// TESTING: Add GUI controls for named scene objects
+  var folder_objects = gui.addFolder('Scene objects');
+  var scene_objects_controllers = [];
+  gui.AddObjectToSceneObjectsFolder = function( objectName ) {
+    var new_object_controller = folder_objects.add(lmbv.GUIObjectsVisibilities, 
+                                                   objectName
+                                                  ).name(objectName);
+    new_object_controller.onChange(function(value) {
+      lmbv.GUI__UpdateObject(objectName, value);
+      console.log(objectName, value);
+    });
+    scene_objects_controllers.push(new_object_controller);
+  };
+  folder_objects.open();
+  /// TESTING
 
   /// Add ourselves to the LMBViewer
   lmbv.GUI = gui;
