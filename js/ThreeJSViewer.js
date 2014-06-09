@@ -31,6 +31,10 @@ var LMBViewer = function( _targetHTMLElement ) {
   var textureCanvas;
   var textureContext;
 
+  /// TESTING Object selection using mouse clicks
+  var projector = new THREE.Projector();
+  /// TESTING
+
   /// TODO experimental flag
   var ONLY_RENDER_WHEN_NECESSARY = true;
   /// Flag for rendering request due to animations or interaction
@@ -631,6 +635,23 @@ var LMBViewer = function( _targetHTMLElement ) {
       RENDER_FLAG = false;
       ResetMouse();
     }
+    /// TESTING Object selection using mouse
+    {
+      var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
+      projector.unprojectVector( vector, camera );
+      var ray = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );
+      var intersections = ray.intersectObject(scene.getObjectByName('Plane1'));
+      if ( intersections.length > 0 ) {
+        console.log("INTERSECTED", intersections[0].object.name);
+      } 
+    }
+    /// TESTING
+    /// TESTING GUI placement
+    if ( typeof(scope.GUI) !== 'undefined' ) {
+    } else {
+      console.log("GUI undefined");
+    }
+    /// TESTING
   };
 
   /**
@@ -649,17 +670,18 @@ var LMBViewer = function( _targetHTMLElement ) {
   {
     console.log("TESTING PLANAR TEXTURED OBJECT");
     geo = new THREE.PlaneGeometry(320,240);
-    console.log(geo);
-    console.log(geo.vertices);
+    //console.log(geo);
+    //console.log(geo.vertices);
     par = { map: THREE.ImageUtils.loadTexture('./examples/color_0000.png') };
-    console.log(par);
+    //console.log(par);
     mat = new THREE.MeshBasicMaterial( par );
     mat.map.needsUpdate = true;
     mat.overdraw = true;
-    console.log(mat);
+    //console.log(mat);
     obj = new THREE.Mesh( geo, mat);
     obj.material.side = THREE.DoubleSide;
     obj.rotation.x = Math.PI*0.5;
+    obj.name = "Plane1";
     scene.add( obj );
 
     var obj2 = obj.clone();
@@ -668,6 +690,7 @@ var LMBViewer = function( _targetHTMLElement ) {
     obj2.rotation.z = Math.PI*0.25
     /// Set obj2 on a slightly different height to avoid Z buffer confusion
     obj2.position.y = -0.1;
+    obj2.name = "Plane2";
     scene.add( obj2 );
   }
   /// TESTING
