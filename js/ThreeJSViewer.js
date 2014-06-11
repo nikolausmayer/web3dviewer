@@ -637,7 +637,9 @@ var LMBViewer = function( _targetHTMLElement ) {
     }
     /// TESTING Object selection using mouse
     {
-      var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
+      var vector = new THREE.Vector3( (mouse.x*1./WIDTH)*2.-1., 
+                                      -(mouse.y*1./HEIGHT)*2.+1., 
+                                      1 );
       projector.unprojectVector( vector, camera );
       var ray = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );
       var intersections = ray.intersectObject(scene.getObjectByName('Plane1'));
