@@ -249,6 +249,9 @@ var LMBViewer = function( _targetHTMLElement ) {
    *    colorImage: Path of the color image to load
    *    objectName: Name given to the created point cloud object
    *    sampling_spacing: Every i-th pixel in x/y-direction will be used
+   *    depthDataFormat: TODO 
+   *    pointSize: Size of generated particle points (TODO: constant pixel size)
+   *    callback: Function to call with the object once it is created
    */
   this.DisplayPointCloud = function( params ) 
   {
@@ -261,13 +264,13 @@ var LMBViewer = function( _targetHTMLElement ) {
     Default(params, 'depthDataFormat', 'UInt16');
     Default(params, 'pointSize', 2);
     Default(params, 'callback', function(){});
-    var depthFilename = params.depthImage;
-    var imageFilename = params.colorImage;
-    var name = params.objectName;
+    var depthFilename    = params.depthImage;
+    var imageFilename    = params.colorImage;
+    var name             = params.objectName;
     var sampling_spacing = params.sampling_spacing;
-    var depthDataFormat = params.depthDataFormat;
-    var pointSize = params.pointSize;
-    var callback = params.callback;
+    var depthDataFormat  = params.depthDataFormat;
+    var pointSize        = params.pointSize;
+    var callback         = params.callback;
 
     var dimage = new Image();
     var rgbimage = new Image();
@@ -358,11 +361,57 @@ var LMBViewer = function( _targetHTMLElement ) {
       pointcloud_object.name = name;
       scene.add( pointcloud_object );
       /// Execute the callback (if specified)
-      callback();
+      callback( pointcloud_object );
       /// Make sure the newly added object is displayed immediately
       RequestRerender();
     });
   };
+
+
+
+  /**
+   * Load an image file and display it on a planar object. The object can
+   * be treated like any other and rotated, translated etc.
+   *
+   * @param params Dictionary of parameters; possible keys are:
+   *    imageFile: Path of the image to load
+   *    objectName: Name given to the created point cloud object
+   *    callback: Function to call with the object once it is created
+   */
+  this.DisplayImage = function( params ) 
+  {
+    /// Check for unset parameters
+    if ( typeof(params) === 'undefined' ) params = {};
+    Default(params, 'imageFile', './examples/color_0000.png');
+    Default(params, 'objectName', 'DEFAULT_IMAGE_NAME');
+    Default(params, 'callback', function(){});
+    var imageFilename = params.imageFile;
+    var name          = params.objectName;
+    var callback      = params.callback;
+
+    /// Load image 
+    var texture = THREE.ImageUtils.loadTexture(imageFilename);
+
+    /// Infer target size from the object if it was not specified
+    Default(params, 'width',  texture.image.width);
+    Default(params, 'height', texture.image.height);
+
+    var geometry = new THREE.PlaneGeometry( params.width, params.height );
+    var material = new THREE.MeshBasicMaterial( { map: texture } );
+    material.map.needsUpdate = true;
+    material.overdraw = true;
+
+    imageObject = new THREE.Mesh( geometry, material );
+    imageObject.material.side = THREE.DoubleSide;
+    imageObject.name = name;
+    scene.add( imageObject );
+
+    /// Execute the callback (if specified)
+    callback( imageObject );
+    /// Make sure the newly added object is displayed immediately
+    RequestRerender();
+  };
+
 
   /**
    * Generate and display a colored test mesh triangle

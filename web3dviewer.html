@@ -43,12 +43,14 @@
       // Example: Display test triangle
       //lmbv.DisplayTestTriangle();
 
-      // Example: Callback to rotate the point cloud after its creation
-      var testCb = function() {
+      // Example: Callback to rotate the point cloud after its creation.
+      //          'o' is the created point cloud object.
+      var testCb = function(o) {
         var test_matrix = new THREE.Matrix4();
         test_matrix.makeRotationFromEuler( new THREE.Euler(-0.4, 0, 0, 'XYZ') );
-        var PCL_object = lmbv.getObjectByName('testName');
-        PCL_object.applyMatrix(test_matrix);
+        //var PCL_object = lmbv.getObjectByName('testName');
+        //PCL_object.applyMatrix(test_matrix);
+        o.applyMatrix(test_matrix);
       };
       // Example: Load RGB+D data and display as point cloud
       lmbv.DisplayPointCloud( { depthImage: './examples/Example_Depth.png',
@@ -57,13 +59,20 @@
                                 sampling_spacing: 1,
                                 depthDataFormat: 'UInt16',
                                 pointSize: 1,
-                                callback: testCb} );
+                                callback: testCb } );
       // Example: Display camera pose
       // ... turned 180° around the Y axis ...
       var R = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(0,Math.PI,0,'XYZ'));
       // ... and translated 200 units in positive Z direction
       var t = new THREE.Vector3(0,0,200);
       lmbv.DisplayCameraPose( { rotation: R, translation: t });
+
+      // Example: Display image
+      lmbv.DisplayImage( { imageFile: './examples/Example_RGB.png',
+                           width: 320,
+                           height: 240,
+                           callback: function(o){o.position.z = -150;} } );
+
     });
   </script>
 </head> 
