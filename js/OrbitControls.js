@@ -3,6 +3,7 @@
  * @author mrdoob / http://mrdoob.com
  * @author alteredq / http://alteredqualia.com/
  * @author WestLangley / http://github.com/WestLangley
+ * @author Nikolaus Mayer / https://github.com/nikolausmayer
  */
 
 THREE.OrbitControls = function ( object, domElement ) {
@@ -61,9 +62,37 @@ THREE.OrbitControls = function ( object, domElement ) {
 	var STATE = { NONE: -1, ROTATE: 0, ZOOM: 1, PAN: 2 };
 	var state = STATE.NONE;
 
+  /** Determine if a mouse interaction was a click-and-move event 
+   *  (rotate/zoom/pan) or an idle click-without-move (selection/deselection)
+   */
+  var idleClick = false;
+
 	// events
 
 	var changeEvent = { type: 'change' };
+
+
+  /**
+   * Report whether the previous mouse interaction was an idle click
+   *
+   * @returns The state of idleClick (TRUE iff the mouse was clicked, 
+   *          but released without dragging).
+   */
+  this.lastClickWasIdle = function() {
+    return idleClick;
+  };
+
+  /**
+   * Report if a mouse button is active
+   *
+   * @returns TRUE iff some mouse button is pressed
+   */
+  this.mouseIsActive = function() {
+    return ( state !== STATE.NONE );
+  };
+
+
+
 
 
 	this.rotateLeft = function ( angle ) {
@@ -227,6 +256,9 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		event.preventDefault();
 
+    /// Assume for now that the interaction is an idle click
+    idleClick = true;
+
 		if ( state === STATE.NONE )
 		{
 			if ( event.button === 0 )
@@ -267,7 +299,9 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		event.preventDefault();
 
-		
+    /// Mouse has been moven with button down, so the interaction is not
+    /// an idle click.
+		idleClick = false;
 		
 		if ( state === STATE.ROTATE ) {
 
@@ -395,7 +429,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	}
 
-	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
+	//this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 	this.domElement.addEventListener( 'mousedown', onMouseDown, false );
 	this.domElement.addEventListener( 'mousewheel', onMouseWheel, false );
 	this.domElement.addEventListener( 'DOMMouseScroll', onMouseWheel, false ); // firefox

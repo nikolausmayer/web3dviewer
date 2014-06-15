@@ -23,11 +23,11 @@ var Default = function( paramsDict, key, defaultValue ) {
  *
  * @param canvasElement The HTML <canvas> element in which the instance runs.
  */
-var LMBViewer = function( _targetHTMLElement ) {
+var LMBViewer = function( _domElement ) {
 
-  var targetHTMLElement = _targetHTMLElement;
-  var WIDTH  = targetHTMLElement.innerWidth()-10;
-  var HEIGHT = targetHTMLElement.innerHeight()-10;
+  var domElement = _domElement;
+  var WIDTH  = domElement.innerWidth()-10;
+  var HEIGHT = domElement.innerHeight()-10;
   var textureCanvas;
   var textureContext;
 
@@ -123,9 +123,9 @@ var LMBViewer = function( _targetHTMLElement ) {
   var ManuallyUpdateGUI = function() {
     if( typeof scope.GUI != 'undefined' ) {
       /// For all GUI 'folders'...
-      for( var f in scope.GUI.__folders ) {
+      for( var f in scope.GUI.gui.__folders ) {
         /// ..., for all controllers in this folder...
-        for( var i in scope.GUI.__folders[f].__controllers ) {
+        for( var i in scope.GUI.gui.__folders[f].__controllers ) {
           /// ..., update this controller.
           scope.GUI.__folders[f].__controllers[i].updateDisplay();
         }
@@ -161,7 +161,7 @@ var LMBViewer = function( _targetHTMLElement ) {
     textureLoaderCanvas.height = 2000;
     textureLoaderCanvas.width  = 2000;
     //textureLoaderCanvas.style.display = 'none';
-    //targetHTMLElement.append(textureLoaderCanvas);
+    //domElement.append(textureLoaderCanvas);
     textureCanvas = textureLoaderCanvas;
     textureContext = textureCanvas.getContext('2d');
   }
@@ -176,7 +176,7 @@ var LMBViewer = function( _targetHTMLElement ) {
     renderer.domElement.id = 'LMBViewer__rendererCanvas';
     renderer.setSize( WIDTH, HEIGHT ); 
     renderer.setClearColor( new THREE.Color('rgb(255,255,255)'), 1.0 );
-    targetHTMLElement.append( renderer.domElement );
+    domElement.append( renderer.domElement );
   }
   /**
    * GUI method: Change background color
@@ -188,8 +188,8 @@ var LMBViewer = function( _targetHTMLElement ) {
 
   /// Window resize event handling
   window.addEventListener('resize', function() {
-    WIDTH  = targetHTMLElement.innerWidth()-10;
-    HEIGHT = targetHTMLElement.innerHeight()-10;
+    WIDTH  = domElement.innerWidth()-10;
+    HEIGHT = domElement.innerHeight()-10;
     renderer.setSize(WIDTH, HEIGHT);
     camera.aspect = WIDTH/HEIGHT;
     camera.updateProjectionMatrix();
@@ -623,11 +623,23 @@ var LMBViewer = function( _targetHTMLElement ) {
     cameraChanged = false;
   }
 
+  var TESTING_0 = true;
+
   /**
    * Main render loop
    */
   this.run = function render() { 
     cameraChanged = controls.update();
+
+    /// TESTING
+    if ( !controls.mouseIsActive() && controls.lastClickWasIdle() && TESTING_0 ) {
+      params = { x: mouse.x, 
+                 y: mouse.y };
+      scope.GUI.TESTING_GUI( params );
+      TESTING_0 = false;
+    }
+    /// TESTING
+
     requestAnimationFrame(render); 
     UpdateRenderFlag();
     if ( RENDER_FLAG || !ONLY_RENDER_WHEN_NECESSARY ) {
@@ -706,67 +718,127 @@ var LMBViewer = function( _targetHTMLElement ) {
  * A GUI for the LMBViewer using dat.GUI
  *
  * @param lmbv The LMBViewerGUI instance
- * @param targetHTMLElement The HTML element into which the GUI will be inserted
+ * @param domElement The HTML element into which the GUI will be inserted
  */
-var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
-  /// Create GUI instance
-  var gui   = new dat.GUI();
-  gui.width = 350;
+var LMBViewerGUI = function( lmbv, domElement ) {
 
-  /// Add controllers for public members of the LMBViewer instance
-
-  /// Visibility of unit direction arrows
-  var GUI__arrows_visible__controller = 
-      gui.add(lmbv, 'GUI__arrows_visible').name('Unit arrows');
-  GUI__arrows_visible__controller.onChange(function(value) {
-    lmbv.toggleHelperArrows(value);
-  });
-  /// Visibility of floor grid lines
-  var GUI__floor_grid_visible__controller =
-      gui.add(lmbv, 'GUI__floor_grid_visible').name('Floor grid');
-  GUI__floor_grid_visible__controller.onChange(function(value) {
-    lmbv.toggleFloorGrid(value);
-  });
-
-  ///
-  /// Color controls
-  ///
-  var folder_colors = gui.addFolder('Colors');
-  /// Background color
-  var GUI__gl_clear_color__controller =
-      folder_colors.addColor(lmbv, 'GUI__gl_clear_color').name('Background color');
-  GUI__gl_clear_color__controller.onChange(function(){
-    lmbv.setGlClearColor();
-  });
-  folder_colors.open();
+  /////////////////////////////////////////////////////////////////////
+  /// Attributes
+  /////////////////////////////////////////////////////////////////////
   
-  ///
-  /// Camera controls
-  ///
-  var folder_camera = gui.addFolder('Camera');
-  /// Viewing angle
-  var GUI__camera_fov_angle__controller =
-      folder_camera.add(lmbv, 'GUI__camera_fov_angle', 1., 180.
-                       ).name('Viewing angle');
-  GUI__camera_fov_angle__controller.onChange(function() {
-    lmbv.UpdateCamera();
-  });
-  /// Control scheme
-  var GUI__camera_control_scheme__controller =
-      folder_camera.add(lmbv, 'GUI__camera_control_scheme',
-                              ['Orbit', 'Trackball']
-                       ).name('Camera controls');
-  GUI__camera_control_scheme__controller.onFinishChange(function(value) {
-    lmbv.switchCameraControlScheme(value);
-  });
-  /// 'Reset' button
-  var GUI__reset_camera__controller =
-      folder_camera.add(lmbv, 'GUI__reset_camera').name('Reset camera');
-  folder_camera.open();
+  /// The dat.GUI instance
+  this.gui;
+  /// The partner LMBViewer instance
+  this.lmbv;
+  /// Is a secondary (context menu-emulating) GUI element active?
+  this.activeContextMenuGUI = null;
 
-  /// Make and save a screenshot of the current scene view
-  gui.add(lmbv, 'GUI__screenshot').name('Save screenshot');
+  var scope = this;
+
+
+  /////////////////////////////////////////////////////////////////////
+  /// Methods
+  /////////////////////////////////////////////////////////////////////
+
+  /**
+   * Initialize instance
+   */
+  var init = function() {
+    scope.gui = new dat.GUI();
+    scope.gui.width = 350;
+    scope.lmbv = lmbv;
+
+    /// Add controllers for public members of the LMBViewer instance
+
+    /// Visibility of unit direction arrows
+    var GUI__arrows_visible__controller = 
+        scope.gui.add(lmbv, 'GUI__arrows_visible').name('Unit arrows');
+    GUI__arrows_visible__controller.onChange(function(value) {
+      lmbv.toggleHelperArrows(value);
+    });
+    /// Visibility of floor grid lines
+    var GUI__floor_grid_visible__controller =
+        scope.gui.add(lmbv, 'GUI__floor_grid_visible').name('Floor grid');
+    GUI__floor_grid_visible__controller.onChange(function(value) {
+      lmbv.toggleFloorGrid(value);
+    });
+
+    ///
+    /// Color controls
+    ///
+    var folder_colors = scope.gui.addFolder('Colors');
+    /// Background color
+    var GUI__gl_clear_color__controller =
+        folder_colors.addColor(lmbv, 'GUI__gl_clear_color'
+                              ).name('Background color');
+    GUI__gl_clear_color__controller.onChange(function(){
+      lmbv.setGlClearColor();
+    });
+    folder_colors.open();
+    
+    ///
+    /// Camera controls
+    ///
+    var folder_camera = scope.gui.addFolder('Camera');
+    /// Viewing angle
+    var GUI__camera_fov_angle__controller =
+        folder_camera.add(lmbv, 'GUI__camera_fov_angle', 1., 180.
+                         ).name('Viewing angle');
+    GUI__camera_fov_angle__controller.onChange(function() {
+      lmbv.UpdateCamera();
+    });
+    /// Control scheme
+    var GUI__camera_control_scheme__controller =
+        folder_camera.add(lmbv, 'GUI__camera_control_scheme',
+                                ['Orbit', 'Trackball']
+                         ).name('Camera controls');
+    GUI__camera_control_scheme__controller.onFinishChange(function(value) {
+      lmbv.switchCameraControlScheme(value);
+    });
+    /// 'Reset' button
+    var GUI__reset_camera__controller =
+        folder_camera.add(lmbv, 'GUI__reset_camera').name('Reset camera');
+    folder_camera.open();
+
+    /// Make and save a screenshot of the current scene view
+    scope.gui.add(lmbv, 'GUI__screenshot').name('Save screenshot');
+
+    /// Add ourselves to the LMBViewer
+    lmbv.GUI = scope;
+  };
+  /// <-- this.init
+
+  /**
+   * Create and display a separate GUI to serve as context menu
+   */
+  this.TESTING_GUI = function( params ) {
+    Default( params, 'x', 0 );
+    Default( params, 'y', 0 );
+    Default( params, 'guiName', 'DEFAULT_CONTEXT_MENU_GUI_NAME' );
+
+    var newGui = new dat.GUI( { autoPlace: false } );
+    var container = $('#LMBViewer')[0];
+    newGui.domElement.style.position = 'absolute';
+    newGui.domElement.style.left = ' ' + params.x + 'px';
+    newGui.domElement.style.top  = ' ' + params.y + 'px';
+    newGui.domElement.id = params.guiName;
+    container.appendChild(newGui.domElement);
+
+    scope.activeContextMenuGUI = { parent: container,
+                                   gui: newGui };
+    if ( scope.activeContextMenuGUI !== null )
+      scope.activeContextMenuGUI.parent.removeChild(
+          scope.activeContextMenuGUI.gui.domElement);
+  };
   
+
+  /////////////////////////////////////////////////////////////////////
+  /// Initialization and testing code
+  /////////////////////////////////////////////////////////////////////
+
+  /// Initialize
+  init();
+
   /// TESTING: Add GUI controls for named scene objects
   var folder_objects = gui.addFolder('Scene objects');
   var scene_objects_controllers = [];
@@ -783,8 +855,6 @@ var LMBViewerGUI = function( lmbv, targetHTMLElement ) {
   folder_objects.open();
   /// TESTING
 
-  /// Add ourselves to the LMBViewer
-  lmbv.GUI = gui;
 };
 /// <-- LMBViewerGUI
 
