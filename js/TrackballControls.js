@@ -1,5 +1,6 @@
 /**
  * @author Eberhard Graether / http://egraether.com/
+ * @author Nikolaus Mayer / https://github.com/nikolausmayer
  */
 
 THREE.TrackballControls = function ( object, domElement ) {
@@ -521,7 +522,7 @@ THREE.TrackballControls = function ( object, domElement ) {
 
 	}
 
-	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
+	//this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 
 	this.domElement.addEventListener( 'mousedown', mousedown, false );
 
